@@ -10,6 +10,7 @@ import type {
   TeamCatalogApiItem,
   TeamStatsApiResponse,
 } from '../world-cup/services/model/simulation-service.interface';
+import type { RawMatchSquadApiResponse } from '../match/services/model/team-state-service.interface';
 
 @Injectable()
 export class WorldCupFeatureApiService extends AbstractBaseService {
@@ -70,5 +71,9 @@ export class WorldCupFeatureApiService extends AbstractBaseService {
       teamId,
       lang: this.resolveLang(lang),
     });
+  }
+
+  public async getCurrentMatchSquad(): Promise<RawMatchSquadApiResponse> {
+    return this.getEndpointData<RawMatchSquadApiResponse>('/match/current/squad');
   }
 }

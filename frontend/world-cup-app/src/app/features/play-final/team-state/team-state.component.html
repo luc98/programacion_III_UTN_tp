@@ -1,6 +1,327 @@
 <section class="card">
   <div class="card-header">
-    <span class="card-title">Estado del equipo</span>
+    <span class="card-title">Estado del Equipo</span>
+    <button
+      class="refresh-btn"
+      (click)="onRefresh()"
+      [disabled]="pageState.loading"
+      title="Actualizar estado">
+      ↻
+    </button>
   </div>
-  <p>Este componente debe ser desarrollado por el alumno.</p>
+
+  <!-- Loading -->
+  <div class="empty-state" *ngIf="pageState.loading">
+    <div class="empty-icon">⏳</div>
+    <p>Cargando estado del equipo...</p>
+  </div>
+
+  <!-- Error -->
+  <div class="empty-state" *ngIf="!pageState.loading && pageState.errorMessage">
+    <div class="empty-icon">⚠️</div>
+    <p>{{ pageState.errorMessage }}</p>
+  </div>
+
+  <!-- No active final -->
+  <div class="empty-state" *ngIf="!pageState.loading && !pageState.errorMessage && pageState.showNoFinalState">
+    <div class="empty-icon">🏟️</div>
+    <p>No hay una final activa ni historial disponible.</p>
+    <p class="empty-hint">Simulá el Mundial e iniciá la final para ver el estado del plantel.</p>
+  </div>
+
+  <!-- Main content -->
+  <ng-container *ngIf="!pageState.loading && !pageState.errorMessage && !pageState.showNoFinalState && pageState.data">
+
+    <!-- Match info bar -->
+    <div class="match-info-bar mt-16">
+      <div class="match-info-item">
+        <span class="match-info-label">Minuto</span>
+        <span class="match-info-value">{{ pageState.data.minute }}'</span>
+      </div>
+      <div class="match-info-separator">|</div>
+      <div class="match-info-item">
+        <span class="match-info-label">Turno</span>
+        <span class="match-info-value">{{ pageState.data.turn }}</span>
+      </div>
+      <div class="match-info-separator">|</div>
+      <div class="match-info-item">
+        <span class="match-info-label">Marcador</span>
+        <span class="match-info-value match-score">{{ pageState.data.score }}</span>
+      </div>
+      <div class="match-info-separator" *ngIf="pageState.data.isFinished">|</div>
+      <span class="badge badge-primary" *ngIf="pageState.data.isFinished">Finalizado</span>
+      <span class="badge badge-primary" *ngIf="pageState.data.isActive && !pageState.data.isFinished">En curso</span>
+    </div>
+
+    <!-- Teams grid -->
+    <div class="teams-grid mt-16">
+
+      <!-- User team -->
+      <div class="team-block">
+        <div class="team-block-header">
+          <span class="team-flag">{{ pageState.data.team.flag }}</span>
+          <span class="team-block-name">{{ pageState.data.team.name }}</span>
+          <span class="badge badge-primary">Mi Equipo</span>
+        </div>
+
+        <div class="team-meta mt-8">
+          <span class="team-meta-item">
+            <span class="team-meta-label">Formación:</span>
+            <span class="team-meta-value">{{ pageState.data.team.formation }}</span>
+          </span>
+          <span class="team-meta-sep">•</span>
+          <span class="team-meta-item">
+            <span class="team-meta-label">Estrategia:</span>
+            <span class="team-meta-value">{{ pageState.data.team.strategyLabel }}</span>
+          </span>
+          <span class="team-meta-sep">•</span>
+          <span class="team-meta-item">
+            <span class="team-meta-label">DT:</span>
+            <span class="team-meta-value">{{ pageState.data.team.coachName }}
+              <span *ngIf="pageState.data.team.coachProfile && pageState.data.team.coachProfile !== '-'" class="coach-profile">({{ pageState.data.team.coachProfile }})</span>
+            </span>
+          </span>
+        </div>
+
+        <div class="tactical-section mt-12">
+          <div class="tactical-row">
+            <span class="tactical-label">Ataque</span>
+            <div class="tactical-bar">
+              <div class="tactical-fill tactical-attack" [style.width]="getTacticalBarWidth(pageState.data.team.tactical.attack)"></div>
+            </div>
+            <span class="tactical-value">{{ pageState.data.team.tactical.attack }}</span>
+          </div>
+          <div class="tactical-row">
+            <span class="tactical-label">Defensa</span>
+            <div class="tactical-bar">
+              <div class="tactical-fill tactical-defense" [style.width]="getTacticalBarWidth(pageState.data.team.tactical.defense)"></div>
+            </div>
+            <span class="tactical-value">{{ pageState.data.team.tactical.defense }}</span>
+          </div>
+          <div class="tactical-row">
+            <span class="tactical-label">Mediocampo</span>
+            <div class="tactical-bar">
+              <div class="tactical-fill tactical-midfield" [style.width]="getTacticalBarWidth(pageState.data.team.tactical.midfield)"></div>
+            </div>
+            <span class="tactical-value">{{ pageState.data.team.tactical.midfield }}</span>
+          </div>
+        </div>
+
+        <div class="players-section mt-12">
+          <div class="players-section-title">
+            En cancha
+            <span class="players-count">({{ pageState.data.team.onFieldCount }})</span>
+          </div>
+          <section class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Pos.</th>
+                  <th>Jugador</th>
+                  <th>Energía</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let player of pageState.data.team.onField">
+                  <td>{{ player.shirtNumber }}</td>
+                  <td><span class="pos-tag" [ngClass]="'pos-' + player.position">{{ player.position }}</span></td>
+                  <td>
+                    {{ player.name }}
+                    <span *ngIf="player.isCaptain" class="captain-badge">(C)</span>
+                    <span *ngIf="player.yellowCards > 0" class="card-badge yellow-card" title="Amarilla(s)">🟨</span>
+                    <span *ngIf="player.redCard" class="card-badge red-card" title="Roja">🟥</span>
+                    <span *ngIf="player.isInjured" class="card-badge injury-badge" title="Lesionado">🤕</span>
+                  </td>
+                  <td>
+                    <span class="energy-badge" [ngClass]="getEnergyClass(player.energyLabel)">
+                      {{ player.energyLabel }}
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
+        </div>
+
+        <div class="players-section mt-12">
+          <div class="players-section-title">
+            Suplentes
+            <span class="players-count">({{ pageState.data.team.bench.length }})</span>
+            <span class="subs-info">
+              Sustituciones: {{ pageState.data.team.substitutionsUsed }}/{{ pageState.data.team.maxSubstitutions }} usadas —
+              {{ pageState.data.team.remainingSubstitutions }} disponibles
+            </span>
+          </div>
+          <section class="table-wrap" *ngIf="pageState.data.team.bench.length > 0">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Pos.</th>
+                  <th>Jugador</th>
+                  <th>Energía</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let player of pageState.data.team.bench">
+                  <td>{{ player.shirtNumber }}</td>
+                  <td><span class="pos-tag" [ngClass]="'pos-' + player.position">{{ player.position }}</span></td>
+                  <td>
+                    {{ player.name }}
+                    <span *ngIf="player.isCaptain" class="captain-badge">(C)</span>
+                    <span *ngIf="player.yellowCards > 0" class="card-badge yellow-card" title="Amarilla(s)">🟨</span>
+                    <span *ngIf="player.redCard" class="card-badge red-card" title="Roja">🟥</span>
+                    <span *ngIf="player.isInjured" class="card-badge injury-badge" title="Lesionado">🤕</span>
+                  </td>
+                  <td>
+                    <span class="energy-badge" [ngClass]="getEnergyClass(player.energyLabel)">
+                      {{ player.energyLabel }}
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
+          <div class="empty-bench" *ngIf="pageState.data.team.bench.length === 0">
+            Sin suplentes disponibles.
+          </div>
+        </div>
+      </div>
+
+      <!-- Rival team -->
+      <div class="team-block">
+        <div class="team-block-header">
+          <span class="team-flag">{{ pageState.data.opponent.flag }}</span>
+          <span class="team-block-name">{{ pageState.data.opponent.name }}</span>
+          <span class="badge badge-rival">Rival</span>
+        </div>
+
+        <div class="team-meta mt-8">
+          <span class="team-meta-item">
+            <span class="team-meta-label">Formación:</span>
+            <span class="team-meta-value">{{ pageState.data.opponent.formation }}</span>
+          </span>
+          <span class="team-meta-sep">•</span>
+          <span class="team-meta-item">
+            <span class="team-meta-label">Estrategia:</span>
+            <span class="team-meta-value">{{ pageState.data.opponent.strategyLabel }}</span>
+          </span>
+          <span class="team-meta-sep">•</span>
+          <span class="team-meta-item">
+            <span class="team-meta-label">DT:</span>
+            <span class="team-meta-value">{{ pageState.data.opponent.coachName }}
+              <span *ngIf="pageState.data.opponent.coachProfile && pageState.data.opponent.coachProfile !== '-'" class="coach-profile">({{ pageState.data.opponent.coachProfile }})</span>
+            </span>
+          </span>
+        </div>
+
+        <div class="tactical-section mt-12">
+          <div class="tactical-row">
+            <span class="tactical-label">Ataque</span>
+            <div class="tactical-bar">
+              <div class="tactical-fill tactical-attack" [style.width]="getTacticalBarWidth(pageState.data.opponent.tactical.attack)"></div>
+            </div>
+            <span class="tactical-value">{{ pageState.data.opponent.tactical.attack }}</span>
+          </div>
+          <div class="tactical-row">
+            <span class="tactical-label">Defensa</span>
+            <div class="tactical-bar">
+              <div class="tactical-fill tactical-defense" [style.width]="getTacticalBarWidth(pageState.data.opponent.tactical.defense)"></div>
+            </div>
+            <span class="tactical-value">{{ pageState.data.opponent.tactical.defense }}</span>
+          </div>
+          <div class="tactical-row">
+            <span class="tactical-label">Mediocampo</span>
+            <div class="tactical-bar">
+              <div class="tactical-fill tactical-midfield" [style.width]="getTacticalBarWidth(pageState.data.opponent.tactical.midfield)"></div>
+            </div>
+            <span class="tactical-value">{{ pageState.data.opponent.tactical.midfield }}</span>
+          </div>
+        </div>
+
+        <div class="players-section mt-12">
+          <div class="players-section-title">
+            En cancha
+            <span class="players-count">({{ pageState.data.opponent.onFieldCount }})</span>
+          </div>
+          <section class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Pos.</th>
+                  <th>Jugador</th>
+                  <th>Energía</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let player of pageState.data.opponent.onField">
+                  <td>{{ player.shirtNumber }}</td>
+                  <td><span class="pos-tag" [ngClass]="'pos-' + player.position">{{ player.position }}</span></td>
+                  <td>
+                    {{ player.name }}
+                    <span *ngIf="player.isCaptain" class="captain-badge">(C)</span>
+                    <span *ngIf="player.yellowCards > 0" class="card-badge yellow-card" title="Amarilla(s)">🟨</span>
+                    <span *ngIf="player.redCard" class="card-badge red-card" title="Roja">🟥</span>
+                    <span *ngIf="player.isInjured" class="card-badge injury-badge" title="Lesionado">🤕</span>
+                  </td>
+                  <td>
+                    <span class="energy-badge" [ngClass]="getEnergyClass(player.energyLabel)">
+                      {{ player.energyLabel }}
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
+        </div>
+
+        <div class="players-section mt-12">
+          <div class="players-section-title">
+            Suplentes
+            <span class="players-count">({{ pageState.data.opponent.bench.length }})</span>
+            <span class="subs-info">
+              Sustituciones: {{ pageState.data.opponent.substitutionsUsed }}/{{ pageState.data.opponent.maxSubstitutions }} usadas —
+              {{ pageState.data.opponent.remainingSubstitutions }} disponibles
+            </span>
+          </div>
+          <section class="table-wrap" *ngIf="pageState.data.opponent.bench.length > 0">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Pos.</th>
+                  <th>Jugador</th>
+                  <th>Energía</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let player of pageState.data.opponent.bench">
+                  <td>{{ player.shirtNumber }}</td>
+                  <td><span class="pos-tag" [ngClass]="'pos-' + player.position">{{ player.position }}</span></td>
+                  <td>
+                    {{ player.name }}
+                    <span *ngIf="player.isCaptain" class="captain-badge">(C)</span>
+                    <span *ngIf="player.yellowCards > 0" class="card-badge yellow-card" title="Amarilla(s)">🟨</span>
+                    <span *ngIf="player.redCard" class="card-badge red-card" title="Roja">🟥</span>
+                    <span *ngIf="player.isInjured" class="card-badge injury-badge" title="Lesionado">🤕</span>
+                  </td>
+                  <td>
+                    <span class="energy-badge" [ngClass]="getEnergyClass(player.energyLabel)">
+                      {{ player.energyLabel }}
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
+          <div class="empty-bench" *ngIf="pageState.data.opponent.bench.length === 0">
+            Sin suplentes disponibles.
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </ng-container>
 </section>
